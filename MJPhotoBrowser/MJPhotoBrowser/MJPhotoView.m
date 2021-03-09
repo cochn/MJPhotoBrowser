@@ -9,6 +9,7 @@
 #import "MJPhoto.h"
 #import "MJPhotoLoadingView.h"
 #import <QuartzCore/QuartzCore.h>
+#import <SDWebImage.h>
 
 #define ESWeak(var, weakVar) __weak __typeof(&*var) weakVar = var
 #define ESStrong_DoNotCheckNil(weakVar, _var) __typeof(&*weakVar) _var = weakVar
@@ -106,16 +107,21 @@
         ESWeak_(_photoLoadingView);
         ESWeak_(_imageView);
         
-        [SDWebImageManager.sharedManager downloadImageWithURL:_photo.url options:SDWebImageRetryFailed| SDWebImageLowPriority| SDWebImageHandleCookies progress:^(NSInteger receivedSize, NSInteger expectedSize) {
-            ESStrong_(_photoLoadingView);
-            if (receivedSize > kMinProgress) {
-                __photoLoadingView.progress = (float)receivedSize/expectedSize;
-            }
-        } completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
-            ESStrongSelf;
-            ESStrong_(_imageView);
-            __imageView.image = image;
-            [_self photoDidFinishLoadWithImage:image];
+       [ [SDWebImageDownloader sharedDownloader] downloadImageWithURL:_photo.url options:SDWebImageRetryFailed| SDWebImageLowPriority| SDWebImageHandleCookies progress:^(NSInteger receivedSize, NSInteger expectedSize, NSURL * _Nullable targetURL) {
+           dispatch_async(dispatch_get_main_queue(), ^{
+               ESStrong_(_photoLoadingView);
+               if (receivedSize > kMinProgress) {
+                   __photoLoadingView.progress = (float)receivedSize/expectedSize;
+               }
+           });
+            
+        } completed:^(UIImage * _Nullable image, NSData * _Nullable data, NSError * _Nullable error, BOOL finished) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                ESStrongSelf;
+                ESStrong_(_imageView);
+                __imageView.image = image;
+                [_self photoDidFinishLoadWithImage:image];
+            });
         }];
     }
 }
