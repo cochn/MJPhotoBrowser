@@ -26,7 +26,7 @@
 @interface MJPhotoView ()
 {
     BOOL _zoomByDoubleTap;
-    YLImageView *_imageView;
+    UIImageView *_imageView;
     MJPhotoLoadingView *_photoLoadingView;
 }
 @end
@@ -38,7 +38,7 @@
     if ((self = [super initWithFrame:frame])) {
         self.clipsToBounds = YES;
 		// 图片
-		_imageView = [[YLImageView alloc] init];
+		_imageView = [[UIImageView alloc] init];
         _imageView.backgroundColor = [UIColor blackColor];
 		_imageView.contentMode = UIViewContentModeScaleAspectFit;
 		[self addSubview:_imageView];
@@ -107,22 +107,38 @@
         ESWeak_(_photoLoadingView);
         ESWeak_(_imageView);
         
-       [ [SDWebImageDownloader sharedDownloader] downloadImageWithURL:_photo.url options:SDWebImageRetryFailed| SDWebImageLowPriority| SDWebImageHandleCookies progress:^(NSInteger receivedSize, NSInteger expectedSize, NSURL * _Nullable targetURL) {
-           dispatch_async(dispatch_get_main_queue(), ^{
-               ESStrong_(_photoLoadingView);
-               if (receivedSize > kMinProgress) {
-                   __photoLoadingView.progress = (float)receivedSize/expectedSize;
-               }
-           });
-            
-        } completed:^(UIImage * _Nullable image, NSData * _Nullable data, NSError * _Nullable error, BOOL finished) {
+        [_imageView sd_setImageWithURL:_photo.url placeholderImage:_photo.placeholder options:SDWebImageRetryFailed| SDWebImageLowPriority| SDWebImageHandleCookies progress:^(NSInteger receivedSize, NSInteger expectedSize, NSURL * _Nullable targetURL) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                ESStrong_(_photoLoadingView);
+                if (receivedSize > kMinProgress) {
+                    __photoLoadingView.progress = (float)receivedSize/expectedSize;
+                }
+            });
+        } completed:^(UIImage * _Nullable image, NSError * _Nullable error, SDImageCacheType cacheType, NSURL * _Nullable imageURL) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 ESStrongSelf;
                 ESStrong_(_imageView);
-                __imageView.image = image;
+//                __imageView.image = image;
                 [_self photoDidFinishLoadWithImage:image];
             });
         }];
+        
+//       [ [SDWebImageDownloader sharedDownloader] downloadImageWithURL:_photo.url options:SDWebImageRetryFailed| SDWebImageLowPriority| SDWebImageHandleCookies progress:^(NSInteger receivedSize, NSInteger expectedSize, NSURL * _Nullable targetURL) {
+//           dispatch_async(dispatch_get_main_queue(), ^{
+//               ESStrong_(_photoLoadingView);
+//               if (receivedSize > kMinProgress) {
+//                   __photoLoadingView.progress = (float)receivedSize/expectedSize;
+//               }
+//           });
+//
+//        } completed:^(UIImage * _Nullable image, NSData * _Nullable data, NSError * _Nullable error, BOOL finished) {
+//            dispatch_async(dispatch_get_main_queue(), ^{
+//                ESStrongSelf;
+//                ESStrong_(_imageView);
+//                __imageView.image = image;
+//                [_self photoDidFinishLoadWithImage:image];
+//            });
+//        }];
     }
 }
 
@@ -133,7 +149,6 @@
         self.scrollEnabled = YES;
         _photo.image = image;
         [_photoLoadingView removeFromSuperview];
-        
         if ([self.photoViewDelegate respondsToSelector:@selector(photoViewImageFinishLoad:)]) {
             [self.photoViewDelegate photoViewImageFinishLoad:self];
         }
